@@ -81,7 +81,7 @@ impl BitMapText {
                 let pixel_height = height.ceil() as usize;
 
                 // 2x scale in x direction to counter the aspect ratio of monospace characters.
-                let scale = rusttype::Scale {
+                let scale = ab_glyph::Scale {
                     x: height * 2.0,
                     y: height,
                 };

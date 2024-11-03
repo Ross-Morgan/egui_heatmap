@@ -2,11 +2,10 @@ use std::fmt::Debug;
 
 use crate::multimap::KeyBoardDirection;
 pub use crate::multimap::{
-    BitMapText, ColorWithThickness, CoordinatePoint, CoordinateRect, Data, FontOptions, Overlay,
+    ColorWithThickness, CoordinatePoint, CoordinateRect, Data, Overlay,
     RenderProblem,
 };
-use egui::Color32 as Color;
-use egui_extras::RetainedImage as RenderedImage;
+use egui::{Color32 as Color, ColorImage, Image};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct Localization {
@@ -183,7 +182,7 @@ pub struct MultiBitmapWidget<Key> {
     current_size: [f32; 2],
     dynamic_resizing: bool,
     // egui
-    rendered_image: RenderedImage,
+    rendered_image: ColorImage,
     debug_name: String,
     needs_rendering: bool,
     // interaction
@@ -258,10 +257,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
             ),
             current_size: start_size.unwrap_or_default(),
             dynamic_resizing: start_size.is_none(),
-            rendered_image: RenderedImage::from_color_image(
-                debug_name.clone(),
-                egui::ColorImage::new([3, 3], Color::GOLD),
-            ),
+            rendered_image: ColorImage::from_rgba_unmultiplied([3, 3], &Color::GOLD.to_array()),
             needs_rendering: true,
             debug_name,
             hide_key: None,
@@ -328,11 +324,10 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
         }
         let size = self.update_size(ui.available_size());
         self.render(state);
-        let rendered = self.rendered_image.texture_id(ui.ctx());
-        let image = egui::Widget::ui(
-            egui::Image::new(rendered, size).sense(egui::Sense::click_and_drag()),
-            ui,
-        );
+        let rendered = self.rendered_image.;
+        let sized_rendered = egui::load::SizedTexture::new(rendered, size);
+
+        let image = egui::Widget::ui(Image::from_texture(sized_rendered), ui);
 
         let mouse = image.hover_pos();
         let rect = image.rect;
@@ -533,7 +528,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
                 Err(err) => (egui::ColorImage::new([w, h], Color::GOLD), Some(err)),
             };
             state.render_problem = problem;
-            self.rendered_image = RenderedImage::from_color_image(self.debug_name.clone(), image);
+            self.rendered_image = image;
         }
     }
 
