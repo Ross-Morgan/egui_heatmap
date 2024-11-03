@@ -56,7 +56,7 @@ impl BitMapText {
                     .get(&egui::FontFamily::Monospace)
                     .and_then(|x| x.first())
                     .and_then(|label| fonts.font_data.get(label))
-                    .and_then(|font| rusttype::Font::try_from_bytes(&font.font))
+                    .and_then(|font| ab_glyph::FontRef::try_from_slice(&font.font).ok())
                     .expect("Failed to retrieve egui default font");
                 /*fonts
                 .families
