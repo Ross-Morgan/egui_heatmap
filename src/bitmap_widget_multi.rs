@@ -183,6 +183,7 @@ pub struct MultiBitmapWidget<Key> {
     dynamic_resizing: bool,
     // egui
     rendered_image: ColorImage,
+    #[allow(dead_code)]
     debug_name: String,
     needs_rendering: bool,
     // interaction
