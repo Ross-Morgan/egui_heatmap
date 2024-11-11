@@ -1,7 +1,7 @@
 mod gamma_multiplyable;
 pub use gamma_multiplyable::{BitMapDrawable, GammyMultiplyable};
 
-pub use crate::font::{BitMapText, FontA, FontOptions};
+pub use crate::font::{BitMapText, FontOptions};
 pub enum KeyBoardDirection {
     Up,
     Down,
