@@ -65,7 +65,7 @@ pub enum ColorGradientOptions {
 fn convert_to_oklab(egui: &Color) -> Oklab {
     let rgba = egui::Rgba::from(*egui);
     let [r, g, b, _a] = rgba.to_array();
-    oklab::linear_srgb_to_oklab(oklab::RGB { r, g, b })
+    oklab::linear_srgb_to_oklab(oklab::Rgb { r, g, b })
 }
 /// Convert an Oklab color to an egui-Color
 pub fn convert_from_oklab(oklab: Oklab) -> Color {
