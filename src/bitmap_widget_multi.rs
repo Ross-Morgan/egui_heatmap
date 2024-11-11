@@ -1,11 +1,11 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use crate::multimap::KeyBoardDirection;
 pub use crate::multimap::{
     ColorWithThickness, CoordinatePoint, CoordinateRect, Data, Overlay,
     RenderProblem,
 };
-use egui::{Color32 as Color, ColorImage, Image};
+use egui::{Color32 as Color, ColorImage};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct Localization {
@@ -257,7 +257,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
             ),
             current_size: start_size.unwrap_or_default(),
             dynamic_resizing: start_size.is_none(),
-            rendered_image: ColorImage::from_rgba_unmultiplied([3, 3], &Color::GOLD.to_array()),
+            rendered_image: ColorImage::from_rgba_unmultiplied([3; 2], &egui::Color32::GOLD.to_array()),
             needs_rendering: true,
             debug_name,
             hide_key: None,
@@ -322,12 +322,17 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
                 self.copy_to_clipboard(size, state);
             }
         }
-        let size = self.update_size(ui.available_size());
-        self.render(state);
-        let rendered = self.rendered_image.;
-        let sized_rendered = egui::load::SizedTexture::new(rendered, size);
 
-        let image = egui::Widget::ui(Image::from_texture(sized_rendered), ui);
+        self.render(state);
+
+        let size = self.update_size(ui.available_size());
+        let [x, y] = [size[0] as usize, size[1] as usize];
+
+        let image = ColorImage::from_rgb([x, y], self.rendered_image.as_raw());
+
+        let inner_image = Arc::<[u8]>::from(image.as_raw());
+
+        let image = egui::Widget::ui(egui::Image::from_bytes("bytes://", inner_image), ui);
 
         let mouse = image.hover_pos();
         let rect = image.rect;
@@ -382,16 +387,18 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
                     ui.close_menu()
                 }
             });
-        });
+        }).expect("Failed");
 
         state.clicked = false;
 
-        if image.double_clicked() {
+        let response = image.response;
+
+        if response.double_clicked() {
             if let Some(pos) = &mouse_pos {
                 self.showmap.center_to(pos, state.change_rect());
                 self.needs_rendering = true;
             }
-        } else if image.clicked() {
+        } else if response.clicked() {
             if let Some(pos) = &mouse_pos {
                 state.clicked = true;
                 self.showmap.select(
@@ -402,19 +409,19 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
                 self.needs_rendering = true;
             }
         }
-        if image.drag_started() {
+        if response.drag_started() {
             if let Some(pos) = &mouse_pos {
                 self.showmap.drag_start(pos);
                 self.needs_rendering = true;
             }
-        } else if image.drag_released() {
+        } else if response.drag_stopped() {
             if let Some(pos) = &mouse_pos {
                 self.showmap.drag_release(Some(pos), state.change_rect());
             } else {
                 self.showmap.drag_release(None, state.change_rect());
             }
             self.needs_rendering = true;
-        } else if image.dragged() {
+        } else if response.dragged() {
             if let Some(pos) = &mouse_pos {
                 if self.showmap.drag_is_ongoing(pos) {
                     self.needs_rendering = true;
@@ -423,7 +430,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
         }
 
         // keyboard movement and zoom and homeing
-        if image.hovered() && ui.ctx().memory(|x| x.focus().is_none()) {
+        if response.hovered() && ui.ctx().memory(|x| x.focused().is_none()) {
             if let Some((key, modifiers)) = ui.ctx().input(|x| {
                 let keys = &x.keys_down;
                 if keys.len() == 1 {
@@ -448,7 +455,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
                 }
                 // keyboard zoom
                 for (needed_key, zoom_increment) in
-                    [(egui::Key::PlusEquals, 1), (egui::Key::Minus, -1)]
+                    [(egui::Key::Plus, 1), (egui::Key::Equals, 1), (egui::Key::Minus, -1)]
                 {
                     if key == needed_key && modifiers.is_none() {
                         self.showmap.zoom(zoom_increment, state.change_rect());
@@ -463,8 +470,8 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
             };
         }
         // mouse scroll
-        if image.hovered() {
-            let (scroll_delta, modifiers) = ui.ctx().input(|x| (x.scroll_delta, x.modifiers));
+        if response.hovered() {
+            let (scroll_delta, modifiers) = ui.ctx().input(|x| (x.raw_scroll_delta, x.modifiers));
             let scroll_delta = if modifiers.shift {
                 scroll_delta.x * 5. //TODO: make this magnifier configurable
             } else {
@@ -519,13 +526,13 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
             let h = self.current_size[1] as usize;
             let (image, problem) = match self.showmap.render(w, h, &mut state.multimap) {
                 Ok(image) => (
-                    egui::ColorImage {
+                    ColorImage {
                         size: [w, h],
                         pixels: image,
                     },
                     None,
                 ),
-                Err(err) => (egui::ColorImage::new([w, h], Color::GOLD), Some(err)),
+                Err(err) => (ColorImage::new([w, h], Color::GOLD), Some(err)),
             };
             state.render_problem = problem;
             self.rendered_image = image;
@@ -553,7 +560,7 @@ impl<Key: std::hash::Hash + Clone + Eq + Debug> MultiBitmapWidget<Key> {
 
                             let mut writer = std::io::Cursor::new(Vec::new());
                             if let Err(e) =
-                                image.write_to(&mut writer, image::ImageOutputFormat::Png)
+                                image.write_to(&mut writer, image::ImageFormat::Png)
                             {
                                 panic!("Failed to convert to png: {e}")
                             };

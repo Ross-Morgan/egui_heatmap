@@ -21,7 +21,7 @@ mod multimap;
 pub use bitmap_data::HeatmapData;
 
 /// Some font-related types
-pub use font::{BitMapText, Font, FontOptions};
+pub use font::{BitMapText, FontA, FontOptions};
 /// Color type: egui::Color32
 pub type Color = egui::Color32;
 pub use bitmap_widget_multi::{

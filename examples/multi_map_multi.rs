@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 use eframe::egui;
+use egui::ViewportBuilder;
 use egui_heatmap::{
     Color, ColorWithThickness, MultiBitmapWidget, MultiBitmapWidgetSettings, MultiMapPosition,
     ShowState,
@@ -7,14 +8,15 @@ use egui_heatmap::{
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(1000.0, 800.0)),
+        viewport: ViewportBuilder::default()
+            .with_inner_size([1000.0, 800.0]),
         ..Default::default()
     };
 
     eframe::run_native(
         "Multi-Map: Many data",
         options,
-        Box::new(|_cc| Box::<MyApp>::default()),
+        Box::new(|_cc| Ok(Box::<MyApp>::default())),
     )
 }
 

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 pub use crate::multimap::{
-    BitMapText, ColorWithThickness, CoordinatePoint, Data, FontOptions, Overlay, RenderProblem,
+    CoordinatePoint, Data, RenderProblem,
 };
 use crate::MultiBitmapWidget;
 use egui::Color32 as Color;

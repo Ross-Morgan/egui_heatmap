@@ -1,7 +1,7 @@
 mod gamma_multiplyable;
 pub use gamma_multiplyable::{BitMapDrawable, GammyMultiplyable};
 
-pub use crate::font::{BitMapText, Font, FontOptions};
+pub use crate::font::{BitMapText, FontA, FontOptions};
 pub enum KeyBoardDirection {
     Up,
     Down,
@@ -179,7 +179,7 @@ impl Overlay {
         overlay.insert(first_coordinate.clone(), "FP".to_string());
         Self::new(
             FontOptions {
-                font: crate::Font::EguiMonospace,
+                font: crate::FontA::EguiMonospace,
                 background_is_transparent: true,
                 font_height: 18.,
             },
@@ -252,7 +252,7 @@ impl Data<egui::Color32> {
             }
         }
         let font = FontOptions {
-            font: crate::Font::EguiMonospace,
+            font: crate::FontA::EguiMonospace,
             background_is_transparent: true,
             font_height: 12.,
         };
@@ -272,7 +272,7 @@ impl Data<egui::Color32> {
         let mut data = Vec::new();
         let mut overlay_text = std::collections::HashMap::default();
         let font = FontOptions {
-            font: crate::Font::EguiMonospace,
+            font: crate::FontA::EguiMonospace,
             background_is_transparent: true,
             font_height: 12.,
         };

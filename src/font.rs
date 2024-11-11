@@ -1,6 +1,8 @@
+use ab_glyph::{Font, ScaleFont};
+
 /// Font to use
 #[derive(Debug, Clone, Default)]
-pub enum Font {
+pub enum FontA {
     /// Use the highest-priority monospace font from egui
     #[default]
     EguiMonospace,
@@ -12,7 +14,7 @@ pub enum Font {
 #[derive(Debug, Clone, Default)]
 pub struct FontOptions {
     /// Font to use
-    pub font: Font,
+    pub font: FontA,
     /// Is the background transparent? Otherwise, background is black.
     pub background_is_transparent: bool,
     /// Height of font. Doubling this doubles the size of the rendered string (up to rounding/quantization)
@@ -50,7 +52,7 @@ impl BitMapText {
     ) -> Option<BitMapText> {
         let fonts = egui::FontDefinitions::default();
         match &font {
-            Font::EguiMonospace => {
+            FontA::EguiMonospace => {
                 let font = fonts
                     .families
                     .get(&egui::FontFamily::Monospace)
@@ -81,7 +83,7 @@ impl BitMapText {
                 let pixel_height = height.ceil() as usize;
 
                 // 2x scale in x direction to counter the aspect ratio of monospace characters.
-                let scale = ab_glyph::Scale {
+                let scale = ab_glyph::PxScale {
                     x: height * 2.0,
                     y: height,
                 };
@@ -91,35 +93,56 @@ impl BitMapText {
                 // it down with an offset when laying it out. v_metrics.ascent is the
                 // distance between the baseline and the highest edge of any glyph in
                 // the font. That's enough to guarantee that there's no clipping.
-                let v_metrics = font.v_metrics(scale);
-                let offset = rusttype::point(0.0, v_metrics.ascent);
+                let offset = ab_glyph::point(0.0, font.as_scaled(scale).ascent());
+
+                let scaled = font.as_scaled(scale);
 
                 // Glyphs to draw for "RustType". Feel free to try other strings.
-                let glyphs: Vec<_> = font.layout(text, scale, offset).collect();
+                let glyphs = text
+                    .chars()
+                    .scan((None, 0.0), |(last, x), c| {
+                        if let Some(last) = last {
+                            *x += scaled.kern(*last, scaled.glyph_id(c));
+                        }
+
+                        let advance = scaled.h_advance(scaled.glyph_id(c));
+                        let next = font
+                            .glyph_id(c)
+                            .with_scale_and_position(scale, offset + ab_glyph::point(*x, 0.0));
+
+                        *last = Some(next.id);
+
+                        Some(next)
+                    })
+                    .collect::<Vec<_>>();
 
                 // Find the most visually pleasing width to display
                 let width = glyphs
                     .iter()
                     .rev()
-                    .map(|g| g.position().x + g.unpositioned().h_metrics().advance_width)
+                    .map(|g| g.position.x + scaled.h_advance(g.id))
                     .next()
                     .unwrap_or(0.0)
                     .ceil() as usize;
                 let mut data = vec![0; width * pixel_height];
-                for g in glyphs {
-                    if let Some(bb) = g.pixel_bounding_box() {
+
+
+                for glyph in glyphs {
+                    let bb = font.glyph_bounds(&glyph);
+
+                    if let Some(g) = font.outline_glyph(glyph) {
                         g.draw(|x, y, v| {
                             let v = (v * 255.).round().clamp(0., 255.);
                             let v = v as u8;
-                            let x = x as i32 + bb.min.x;
-                            let y = y as i32 + bb.min.y;
+                            let x = x as i32 + bb.min.x as i32;
+                            let y = y as i32 + bb.min.y as i32;
                             // There's still a possibility that the glyph clips the boundaries of the bitmap
                             if x >= 0 && x < width as i32 && y >= 0 && y < pixel_height as i32 {
                                 let x = x as usize;
                                 let y = y as usize;
                                 data[x + y * width] = v;
                             }
-                        })
+                        });
                     }
                 }
 
@@ -129,7 +152,7 @@ impl BitMapText {
                     height: height as i32,
                 })
             }
-            Font::Font8x8 => {
+            FontA::Font8x8 => {
                 let mut chars = Vec::new();
                 for c in text.chars() {
                     let bitmap = if c.is_ascii() {
