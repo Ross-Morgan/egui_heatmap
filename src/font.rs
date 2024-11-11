@@ -111,6 +111,7 @@ impl BitMapText {
                             .with_scale_and_position(scale, offset + ab_glyph::point(*x, 0.0));
 
                         *last = Some(next.id);
+                        *x += advance;
 
                         Some(next)
                     })
